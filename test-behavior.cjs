@@ -35,3 +35,12 @@ assert.equal(new URL(C.jobplanetUrl('㈜ 에이 & 비')).searchParams.get('query
 const wantedJob={...wide,id:'live-wanted-905',source:'wanted',url:'https://www.wanted.co.kr/wd/905'};assert.equal(C.validateLiveJob(wantedJob).source,'wanted');
 assert.throws(()=>C.validateLiveJob({...wantedJob,url:'https://www.wanted.co.kr/wd/906'}));
 console.log('Passed: ongoing placeholder dates, real countdowns, latest and imminent sorting, review links and Wanted persistence.');
+
+const rating=C.validateCompanyRating({company:'㈜ 테스트기업',rating:'3.7',reviewUrl:'https://www.jobplanet.co.kr/companies/12345/reviews?clear_filter=1',checkedAt:'2026-10-14T06:00:00Z'});
+assert.equal(rating.rating,3.7);assert.equal(rating.source,'manual');assert.equal(rating.reviewUrl,'https://www.jobplanet.co.kr/companies/12345/reviews');
+assert.equal(C.companyKey(rating.company),C.companyKey('테스트기업(주)'));assert.notEqual(C.companyKey('테스트기업'),C.companyKey('테스트기업판매'));
+assert.equal(C.validateCompanyRating(JSON.parse(JSON.stringify(rating))).rating,3.7);
+for(const value of ['',null,0,5.1,3.75,'NaN'])assert.throws(()=>C.validateCompanyRating({company:'테스트기업',rating:value}));
+for(const url of ['https://www.jobplanet.co.kr.evil.example/companies/12345/reviews','http://www.jobplanet.co.kr/companies/12345/reviews','https://www.jobplanet.co.kr/search'])assert.throws(()=>C.validateCompanyRating({company:'테스트기업',rating:3.7,reviewUrl:url}));
+assert.equal(C.validateCompanyRating({company:'테스트기업',rating:4}).reviewUrl,'');
+console.log('Passed: manually verified ratings, company matching, backup preservation and valid review links.');

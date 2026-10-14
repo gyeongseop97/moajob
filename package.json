@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node --watch server.mjs",
-    "test": "node test-core.cjs && node test-behavior.cjs && node --test tests/api.test.mjs tests/parsers.test.mjs",
+    "test": "node test-core.cjs && node test-behavior.cjs && node --test tests/api.test.mjs tests/parsers.test.mjs tests/company-ratings.test.mjs",
     "test:live": "node scripts/check-live.mjs"
   }
 }

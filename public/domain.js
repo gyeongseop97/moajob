@@ -61,5 +61,15 @@
   return [...jobs].sort((a,b)=>{if(sort==='company')return a.company.localeCompare(b.company,'ko')||recent(a,b);if(sort==='deadline'){const x=rank(a),y=rank(b);return x[0]-y[0]||(x[1]===y[1]?0:x[1]-y[1])||recent(a,b);}return recent(a,b);});
  }
  function jobplanetUrl(company){const name=String(company||'').replace(/주식회사|㈜|\(주\)/g,'').trim();return'https://www.jobplanet.co.kr/search/companies?query='+encodeURIComponent(name);}
- root.JobDomain={provinceAliases,regionCodes,educationCodes,employmentCodes,annualSalary,today,calendarDate,normalizeDeadline,deadlineState,classifyJob,classifyJobs,groupJobs,deadlineText,sortJobs,publishedDate,jobplanetUrl,fingerprint};
+ function validateCompanyRating(raw){
+  const company=typeof raw?.company==='string'?raw.company.trim():'',rating=raw?.rating!==''&&raw?.rating!==null?Number(raw?.rating):NaN;
+  if(company.length<1||company.length>100||!normalizeCompany(company))throw new Error('기업명을 확인해 주세요.');
+  if(!Number.isFinite(rating)||rating<1||rating>5||Math.abs(rating*10-Math.round(rating*10))>1e-8)throw new Error('평점은 1.0~5.0 사이의 숫자로 소수 첫째 자리까지 입력해 주세요.');
+  let reviewUrl='';if(raw.reviewUrl){let url;try{url=new URL(raw.reviewUrl);}catch{throw new Error('잡플래닛 기업 리뷰 주소를 확인해 주세요.');}
+   if(url.protocol!=='https:'||!['www.jobplanet.co.kr','jobplanet.co.kr'].includes(url.hostname)||!/^\/companies\/\d+\/reviews\/?$/.test(url.pathname)||url.username||url.password||url.port)throw new Error('https://www.jobplanet.co.kr/companies/기업번호/reviews 형식의 주소를 입력해 주세요.');
+   reviewUrl='https://www.jobplanet.co.kr'+url.pathname.replace(/\/$/,'');
+  }
+  return{company,rating,reviewUrl,source:'manual',checkedAt:Number.isFinite(Date.parse(raw.checkedAt))?new Date(raw.checkedAt).toISOString():new Date().toISOString()};
+ }
+ root.JobDomain={provinceAliases,regionCodes,educationCodes,employmentCodes,annualSalary,today,calendarDate,normalizeDeadline,deadlineState,classifyJob,classifyJobs,groupJobs,deadlineText,sortJobs,publishedDate,jobplanetUrl,companyKey:normalizeCompany,validateCompanyRating,fingerprint};
 })(typeof globalThis!=='undefined'?globalThis:this);

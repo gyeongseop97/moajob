@@ -4,6 +4,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import path from 'node:path';
 import {searchJobs} from './lib/job-search.mjs';
 import {checkJobs} from './lib/job-details.mjs';
+import {getCompanyRating} from './lib/company-ratings.mjs';
 
 const publicDirectory=fileURLToPath(new URL('./public/',import.meta.url));
 const sourceNames=new Set(['saramin','jobkorea','wanted','remember','incruit']);
@@ -79,6 +80,12 @@ export function createAppServer({fetcher=globalThis.fetch,allowedOrigins=(proces
           const data=await searchJobs(query,sources,fetcher,pages,{fresh:url.searchParams.get('fresh')==='1'});
           json(response,200,data);
         }catch{json(response,400,{error:'검색 페이지를 확인해 주세요. 페이지는 1~100 사이여야 합니다.'});}
+        return;
+      }
+      if(url.pathname==='/api/companies/rating'){
+        if(request.method!=='GET'){json(response,405,{error:'GET 요청을 사용해 주세요.'},{Allow:'GET'});return;}
+        try{json(response,200,await getCompanyRating(url.searchParams.get('company'),fetcher));}
+        catch{json(response,400,{error:'기업명을 1~100자로 입력해 주세요.'});}
         return;
       }
       if(url.pathname==='/api/jobs/refresh'){
