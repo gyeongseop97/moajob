@@ -46,6 +46,5 @@
   </div>
 </main>
 <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
-<dialog id="rating-dialog" class="add-dialog company-rating-dialog"><form id="rating-form"><div class="dialog-heading"><h2>기업 평점 저장</h2><button id="close-rating" type="button" class="icon-button" aria-label="닫기">×</button></div><p class="muted">잡플래닛에서 해당 기업의 평점을 확인한 뒤 입력해 주세요. 같은 기업의 공고에 함께 표시됩니다.</p><label for="rating-company">기업명<input id="rating-company" readonly></label><label for="rating-value">확인한 평점 (5점 만점)<input id="rating-value" type="number" min="1" max="5" step="0.1" required placeholder="예: 3.7" inputmode="decimal"></label><label for="rating-url">기업 리뷰 주소 (선택)<input id="rating-url" type="url" placeholder="https://www.jobplanet.co.kr/companies/기업번호/reviews"></label><p class="muted">리뷰 주소를 저장하면 버튼이 해당 기업의 리뷰 페이지로 바로 이동합니다. 자동 조회가 제한되거나 동명 기업이 있는 경우 직접 확인한 평점을 저장할 수 있습니다.</p><p id="rating-error" class="error-text" role="alert"></p><button type="submit" class="button primary full-width">평점 저장</button><button id="delete-rating" type="button" class="remove-link hidden">저장된 평점 삭제</button></form></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body></html>
