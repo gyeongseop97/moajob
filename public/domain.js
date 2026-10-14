@@ -11,7 +11,15 @@
  function employmentCodes(value){const s=String(value||'').replace(/정규직\s*전환(?:형|가능)?/g,'').replace(/비정규직/g,''),out=[];for(const type of ['정규직','계약직','인턴','프리랜서','아르바이트','파견직','위촉직'])if(s.includes(type)||type==='파견직'&&/파견/.test(s)||type==='위촉직'&&/위촉/.test(s))out.push(type);return out;}
  function annualSalary(raw){const s=String(raw||'');if(/월급|월봉|시급|일급/.test(s)||!s.includes('연봉'))return null;const m=s.match(/연봉\s*([\d,]+)(?:\s*[~–-]\s*[\d,]+)?\s*(만원|원)/);return m?Number(m[1].replaceAll(',',''))/(m[2]==='원'?10000:1):null;}
  function today(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10);}
- function deadlineState(j){const days=j.deadline?(Date.parse(j.deadline)-Date.parse(today()))/86400000:null;return{days,ongoing:/상시|채용\s*시/.test(j.deadlineLabel||'')||j.kind==='demo'&&!j.deadline,closed:j.availability==='closed'||days!==null&&days<0||/^마감$|마감완료|채용마감|종료|D\s*\+\s*\d+/.test(j.deadlineLabel||'')};}
+ function calendarDate(raw){if(typeof raw!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(raw))return null;const time=Date.parse(raw+'T00:00:00Z');return Number.isFinite(time)&&new Date(time).toISOString().slice(0,10)===raw?raw:null;}
+ function normalizeDeadline(j){
+  const date=calendarDate(j.deadline),placeholder=j.source==='jobkorea'&&date==='2070-01-01';
+  const ongoing=/상시|채용\s*시/.test(j.deadlineLabel||'')||placeholder||j.kind==='demo'&&!j.deadline;
+  if(ongoing)return{deadline:null,deadlineLabel:placeholder?'상시 / 채용 시':j.deadlineLabel||'상시 / 채용 시'};
+  if(j.deadline&&(!date||Number(date.slice(0,4))>=2070))return{deadline:null,deadlineLabel:'마감일 확인 필요'};
+  return{deadline:date,deadlineLabel:j.deadlineLabel||''};
+ }
+ function deadlineState(j){const normalized=normalizeDeadline(j),days=normalized.deadline?(Date.parse(normalized.deadline)-Date.parse(today()))/86400000:null;return{days,ongoing:/상시|채용\s*시/.test(normalized.deadlineLabel),closed:j.availability==='closed'||days!==null&&days<0||/^마감$|마감완료|채용마감|종료|D\s*\+\s*\d+/.test(j.deadlineLabel||'')};}
  function classifyJob(j,f={}){
   const missing=[],hay=[j.title,j.company,j.location,j.category,...(j.tags||[])].join(' ').toLocaleLowerCase(),excluded=()=>({status:'exclude',missing:[]});
   if(!tokens(f.query).every(w=>hay.includes(w))||f.sources?.length&&!f.sources.includes(j.source))return excluded();
@@ -45,6 +53,13 @@
    group.members.push(job);if(!group.sources.includes(job.source))group.sources.push(job.source);group.duplicateCandidate=job.kind==='live'&&group.members.length>1;
   }return groups;
  }
- function deadlineText(j){const s=deadlineState(j);if(s.closed)return'마감';if(s.ongoing)return'상시 / 채용 시';if(s.days!==null)return s.days===0?'오늘 마감':'D-'+s.days+' · '+j.deadline.slice(5).replace('-','.');return j.deadlineLabel||'마감일 미기재';}
- root.JobDomain={provinceAliases,regionCodes,educationCodes,employmentCodes,annualSalary,today,deadlineState,classifyJob,classifyJobs,groupJobs,deadlineText,fingerprint};
+ function deadlineText(j){const s=deadlineState(j),normalized=normalizeDeadline(j);if(s.closed)return'마감';if(s.ongoing)return'상시 / 채용 시';if(s.days!==null)return s.days===0?'오늘 마감':'D-'+s.days+' · '+normalized.deadline.slice(5).replace('-','.');return normalized.deadlineLabel||'마감일 미기재';}
+ function publishedDate(j){const dates=(j.members||[j]).map(m=>calendarDate(m.published)).filter(d=>d&&d<=today());return dates.sort().at(-1)||null;}
+ function sortJobs(jobs,sort='recent'){
+  const recent=(a,b)=>String(publishedDate(b)||'').localeCompare(String(publishedDate(a)||''));
+  const rank=j=>{const s=deadlineState(j);return[s.closed?3:s.days!==null?0:s.ongoing?1:2,s.days!==null&&!s.closed?s.days:Infinity];};
+  return [...jobs].sort((a,b)=>{if(sort==='company')return a.company.localeCompare(b.company,'ko')||recent(a,b);if(sort==='deadline'){const x=rank(a),y=rank(b);return x[0]-y[0]||(x[1]===y[1]?0:x[1]-y[1])||recent(a,b);}return recent(a,b);});
+ }
+ function jobplanetUrl(company){const name=String(company||'').replace(/주식회사|㈜|\(주\)/g,'').trim();return'https://www.jobplanet.co.kr/search/companies?query='+encodeURIComponent(name);}
+ root.JobDomain={provinceAliases,regionCodes,educationCodes,employmentCodes,annualSalary,today,calendarDate,normalizeDeadline,deadlineState,classifyJob,classifyJobs,groupJobs,deadlineText,sortJobs,publishedDate,jobplanetUrl,fingerprint};
 })(typeof globalThis!=='undefined'?globalThis:this);

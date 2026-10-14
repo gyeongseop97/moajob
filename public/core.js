@@ -3,7 +3,7 @@
   const sources = {
     saramin: {name:'사람인',short:'사',color:'#3b6bdd',home:'https://www.saramin.co.kr/',guide:'https://www.saramin.co.kr/zf_user/search',connected:true,status:'공개 검색 연결',description:'사람인의 공개 검색 목록에서 실제 공고와 지역·경력·학력·고용 형태·마감 정보를 가져옵니다. 더보기를 누르면 다음 검색 페이지를 확인합니다. 사이트 구조 변경이나 접근 제한 시 연결 상태를 표시합니다.'},
     jobkorea: {name:'잡코리아',short:'잡',color:'#1387cb',home:'https://www.jobkorea.co.kr/',guide:'https://www.jobkorea.co.kr/Search/',connected:true,status:'공개 검색 연결',description:'잡코리아 공개 검색 목록을 페이지별로 가져옵니다. 광고 등 반복 노출 공고는 한 번만 표시합니다. 목록에서 확인되지 않는 고용 형태·급여 등은 미기재로 표시합니다.'},
-    wanted: {name:'원티드',short:'w',color:'#2d56e8',home:'https://www.wanted.co.kr/',guide:'https://www.wanted.co.kr/',status:'연동 경로 확인 필요',description:'개인용 공고 통합 검색에 사용할 수 있는 공식 연동 경로와 이용 범위를 확인해야 합니다. 이 시제품에는 아직 연결되지 않았습니다.'},
+    wanted: {name:'원티드',short:'w',color:'#2d56e8',home:'https://www.wanted.co.kr/',guide:'https://www.wanted.co.kr/search',connected:true,status:'공개 검색 연결',description:'원티드의 공개 검색 응답에서 실제 공고와 기업·근무지·경력·마감 정보를 가져옵니다. 고용 형태·급여·학력 등 미기재 항목은 원문 재확인으로 보완합니다. 접근 제한 시 실패 상태를 표시합니다.'},
     remember: {name:'리멤버',short:'R',color:'#28382f',home:'https://page.rememberapp.co.kr/home',guide:'https://page.rememberapp.co.kr/home',status:'연동 경로 확인 필요',description:'개인용 공고 통합 검색에 사용할 수 있는 공식 연동 경로와 이용 범위를 확인해야 합니다. 이 시제품에는 아직 연결되지 않았습니다.'},
     incruit: {name:'인크루트',short:'인',color:'#eb6c24',home:'https://jlab.incruit.com/search',guide:'https://jlab.incruit.com/search',connected:true,status:'공개 검색 연결',description:'인크루트 공개 검색에서 제공하는 공고를 순서대로 가져옵니다. 지역·경력·고용 형태·학력·급여·마감 표시로 필터링하고, 더보기로 다음 결과를 이어서 확인할 수 있습니다.'}
   };
@@ -46,16 +46,17 @@
   }
   function filterJobs(jobs,f={}){const result=root.JobDomain.classifyJobs(jobs,f);return f.includeUnknown?[...result.match,...result.unknown]:result.match;}
   function groupJobs(jobs,enabled=true){return root.JobDomain.groupJobs(jobs,enabled);}
-  function sortJobs(jobs,sort='recent'){return [...jobs].sort((a,b)=>sort==='deadline'?(a.deadline||'9999').localeCompare(b.deadline||'9999'):sort==='company'?a.company.localeCompare(b.company,'ko'):String(b.published||'').localeCompare(String(a.published||'')));}
+  function sortJobs(jobs,sort='recent'){return root.JobDomain.sortJobs(jobs,sort);}
   function experienceText(j){return j.experienceText|| (j.min===null&&j.max===null?'경력 미기재':j.min===0&&j.max===0?'신입':j.min===0&&j.max===null?'신입 가능':j.min===0?'신입–'+j.max+'년':j.max===null?j.min+'년 이상':j.min+'–'+j.max+'년');}
   function validateLiveJob(raw){
-    const match=typeof raw?.id==='string'?raw.id.match(/^live-(saramin|jobkorea|incruit)-(\d+)$/):null;
+    const match=typeof raw?.id==='string'?raw.id.match(/^live-(saramin|jobkorea|incruit|wanted)-(\d+)$/):null;
     if(!raw||raw.kind!=='live'||!match)throw new Error('실제 공고 형식이 올바르지 않습니다.');
-    const source=match[1],url=new URL(raw.url),expected=source==='jobkorea'?{host:'www.jobkorea.co.kr',path:'/Recruit/GI_Read/'+match[2]}:source==='incruit'?{host:'jlab.incruit.com',path:'/jobs/'+match[2]}:{host:'www.saramin.co.kr',path:'/zf_user/jobs/relay/view'};
+    const source=match[1],url=new URL(raw.url),expected=source==='wanted'?{host:'www.wanted.co.kr',path:'/wd/'+match[2]}:source==='jobkorea'?{host:'www.jobkorea.co.kr',path:'/Recruit/GI_Read/'+match[2]}:source==='incruit'?{host:'jlab.incruit.com',path:'/jobs/'+match[2]}:{host:'www.saramin.co.kr',path:'/zf_user/jobs/relay/view'};
     if(url.protocol!=='https:'||url.hostname!==expected.host||url.pathname!==expected.path||source==='saramin'&&(url.searchParams.get('rec_idx')!==match[2]||[...url.searchParams.keys()].some(k=>k!=='rec_idx'))||url.username||url.password||url.port)throw new Error('실제 공고 링크를 확인해 주세요.');
     const liveNumber=value=>value===null||value===undefined||value===''?null:Number(value);
     const min=liveNumber(raw.min),max=liveNumber(raw.max);
     if([min,max].some(n=>n!==null&&(!Number.isInteger(n)||n<0||n>100))||min!==null&&max!==null&&min>max)throw new Error('실제 공고의 경력 범위를 확인해 주세요.');
+    raw={...raw,...root.JobDomain.normalizeDeadline(raw)};
     const job=validateJob({...raw,id:raw.id,min:null,max:null});
     return {...job,min,max,kind:'live',source,category:cleanText(raw.category,160)||'실제 검색 결과',tags:Array.isArray(raw.tags)?raw.tags.slice(0,12).map(t=>cleanText(t,60)).filter(Boolean):[],employment:cleanText(raw.employment,60)||'고용형태 미기재',experienceText:cleanText(raw.experienceText,60),deadlineLabel:cleanText(raw.deadlineLabel,60),published:/^\d{4}-\d{2}-\d{2}$/.test(raw.published||'')?raw.published:null,fetchedAt:cleanText(raw.fetchedAt,40),checkedAt:Number.isFinite(Date.parse(raw.checkedAt))?raw.checkedAt:null,checkStatus:['ok','error','blocked'].includes(raw.checkStatus)?raw.checkStatus:null,checkMessage:cleanText(raw.checkMessage,180),employmentIncomplete:raw.employmentIncomplete===true,availability:['closed','before_deadline','unknown'].includes(raw.availability)?raw.availability:'unknown',experienceRanges:Array.isArray(raw.experienceRanges)?raw.experienceRanges.slice(0,3).filter(r=>r&&Number.isInteger(r.min)&&r.min>=0&&r.min<=50&&(r.max===null||Number.isInteger(r.max)&&r.max>=r.min&&r.max<=50)).map(r=>({min:r.min,max:r.max})):[]};
   }

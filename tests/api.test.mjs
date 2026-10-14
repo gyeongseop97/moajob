@@ -1,7 +1,7 @@
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppServer} from '../server.mjs';
-import {jobkoreaHtml,saraminHtml,incruitData,detailHtml} from './fixtures.mjs';
+import {jobkoreaHtml,saraminHtml,incruitData,detailHtml,wantedData,wantedDetailHtml} from './fixtures.mjs';
 
 let server,origin,blockDetails=false;
 const calls=[];
@@ -11,6 +11,8 @@ const fetcher=async value=>{
   if(url.hostname==='www.jobkorea.co.kr'&&url.pathname.startsWith('/Search'))return new Response(jobkoreaHtml);
   if(url.hostname==='www.saramin.co.kr'&&url.pathname==='/zf_user/search')return new Response(saraminHtml);
   if(url.hostname==='jlab.incruit.com'&&url.pathname==='/lab/api/mobile/search')return Response.json(incruitData);
+  if(url.hostname==='www.wanted.co.kr'&&url.pathname==='/api/v4/jobs')return Response.json(wantedData(url.searchParams.get('query'),Number(url.searchParams.get('offset'))));
+  if(url.hostname==='www.wanted.co.kr'&&url.pathname.startsWith('/wd/'))return new Response(wantedDetailHtml(url.pathname.split('/').at(-1)));
   throw new Error('Unexpected fixture destination');
 };
 before(async()=>{
@@ -50,7 +52,16 @@ test('page parameters and fresh searches reach the intended public search path',
 });
 
 test('unconnected sources are reported without a fake empty success',async()=>{
-  const previous=calls.length,data=await (await fetch(origin+'/api/search?q=x&sources=wanted')).json();assert.equal(data.sources[0].status,'not_connected');assert.equal(data.jobs.length,0);assert.equal(calls.length,previous);
+  const previous=calls.length,data=await (await fetch(origin+'/api/search?q=x&sources=remember')).json();assert.equal(data.sources[0].status,'not_connected');assert.equal(data.jobs.length,0);assert.equal(calls.length,previous);
+});
+
+test('Wanted supports keyword searches, offset pagination and detail refresh',async()=>{
+ const q='뷰티 디자이너',pages=encodeURIComponent(JSON.stringify({wanted:2}));
+ const data=await (await fetch(origin+'/api/search?q='+encodeURIComponent(q)+'&sources=wanted&pages='+pages+'&fresh=1')).json();
+ assert.equal(data.sources[0].status,'ok');assert.equal(data.sources[0].nextPage,3);assert.equal(data.jobs[0].id,'live-wanted-905');
+ assert.equal(calls.at(-1).searchParams.get('query'),q);assert.equal(calls.at(-1).searchParams.get('offset'),'20');assert.equal(calls.at(-1).searchParams.get('limit'),'20');
+ const detail=await (await fetch(origin+'/api/jobs/refresh',{method:'POST',body:JSON.stringify({ids:['live-wanted-905'],fresh:true})})).json();
+ assert.equal(detail.results[0].status,'ok');assert.equal(detail.results[0].patch.employment,'정규직');assert.equal(detail.results[0].patch.salary,undefined);
 });
 
 test('detail refresh returns verified fields and preserves a source failure as a failure',async()=>{

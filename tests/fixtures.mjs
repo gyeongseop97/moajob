@@ -12,6 +12,10 @@ export const saraminHtml=`<html><body><div id="recruit_info_list"><div class="it
 
 export const incruitData={success:true,numFound:41,page:1,rows:20,docs:[{jobId:'903',companyNm:'예시기업',title:'제품 기획 담당자',regionNm:'서울>서초구',careerNm:'경력 2~5년',employTyNm:'정규직',salaryNm:'협의',scholNm:'학력무관',dDay:'D-7',pstnNm:'제품 기획',occuNm:'경영>제품기획'}]};
 
+export function wantedData(query='디자이너',offset=0){return{links:{prev:null,next:'/api/v4/jobs?country=kr&limit=20&offset='+(offset+20)+'&query='+encodeURIComponent(query)},data:[{id:905,status:'active',hidden:false,company:{name:'테스트디자인',industry_name:'디자인'},position:'뷰티 콘텐츠 디자이너',address:{location:'서울',district:'강남구',full_location:'서울 강남구 테헤란로'},annual_from:0,annual_to:3,due_time:null}]};}
+
+export function wantedDetailHtml(id='905'){return '<script type="application/ld+json">'+JSON.stringify({'@context':'https://schema.org','@type':'JobPosting',url:'https://www.wanted.co.kr/wd/'+id,title:'뷰티 콘텐츠 디자이너',hiringOrganization:{name:'테스트디자인'},employmentType:'정규직',datePosted:'2026-10-14',baseSalary:{currency:'KRW',value:{unitText:'YEAR',minValue:0,maxValue:0}}})+'</script>';}
+
 export function detailHtml(id='901'){
   return '<html><body><script type="application/ld+json">'+JSON.stringify({
     '@context':'https://schema.org','@type':'JobPosting',title:'서비스 기획 담당자',

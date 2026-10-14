@@ -68,7 +68,7 @@ export function createAppServer({fetcher=globalThis.fetch,allowedOrigins=(proces
 
         if(request.method!=='GET'){json(response,405,{error:'GET 요청을 사용해 주세요.'},{Allow:'GET'});return;}
         const query=url.searchParams.get('q')||'';
-        const sources=(url.searchParams.get('sources')||'saramin,jobkorea,incruit').split(',').filter(Boolean);
+        const sources=(url.searchParams.get('sources')||'saramin,jobkorea,incruit,wanted').split(',').filter(Boolean);
         if(!query.trim()||query.trim().length>100||sources.some(source=>!sourceNames.has(source))){
           json(response,400,{error:'검색어는 1~100자로 입력하고 지원하는 사이트를 선택해 주세요.'});return;
         }

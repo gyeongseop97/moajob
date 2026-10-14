@@ -20,3 +20,18 @@ const wide={...job,kind:'live',id:'live-incruit-903',source:'incruit',url:'https
 assert.equal(C.validateLiveJob(wide).max,100);
 assert.throws(()=>C.validateJob({...wide,kind:'personal'}));
 console.log('Passed: source career ranges up to 100 are retained without relaxing manual-entry validation.');
+
+const day=offset=>new Date(Date.parse(today)+offset*86400000).toISOString().slice(0,10);
+const ongoing={...job,id:'ongoing',deadline:'2070-01-01',deadlineLabel:'~ 01/01'};
+assert.equal(C.deadlineText(ongoing),'상시 / 채용 시');assert.equal(C.deadlineState(ongoing).days,null);
+assert.equal(C.classifyJob(ongoing,{deadline:'7'}).status,'exclude');assert.equal(C.classifyJob(ongoing,{deadline:'ongoing'}).status,'match');
+assert.equal(C.deadlineText({...job,deadline:'2026-02-30'}),'마감일 확인 필요');
+assert.equal(C.deadlineText({...job,deadline:day(1)}),'D-1 · '+day(1).slice(5).replace('-','.'));
+const ordered=[{...job,id:'closed',deadline:day(-1)},{...job,id:'later',deadline:day(10)},{...ongoing},{...job,id:'unknown',deadline:null},{...job,id:'soon',deadline:day(1)}];
+assert.deepEqual(Array.from(C.sortJobs(ordered,'deadline'),j=>j.id),['soon','later','ongoing','unknown','closed']);assert.equal(ordered[0].id,'closed');
+const dated=[{...job,id:'unknown',published:null},{...job,id:'older',published:day(-5)},{...job,id:'newest',published:day(-1)}];
+assert.deepEqual(Array.from(C.sortJobs(dated,'recent'),j=>j.id),['newest','older','unknown']);
+assert.equal(new URL(C.jobplanetUrl('㈜ 에이 & 비')).searchParams.get('query'),'에이 & 비');
+const wantedJob={...wide,id:'live-wanted-905',source:'wanted',url:'https://www.wanted.co.kr/wd/905'};assert.equal(C.validateLiveJob(wantedJob).source,'wanted');
+assert.throws(()=>C.validateLiveJob({...wantedJob,url:'https://www.wanted.co.kr/wd/906'}));
+console.log('Passed: ongoing placeholder dates, real countdowns, latest and imminent sorting, review links and Wanted persistence.');
