@@ -1,34 +1,60 @@
-# 모아잡 · MOAJOB
+# 모아잡 · MOAJOB — GitHub Pages 수정본
 
-사람인·잡코리아·인크루트의 공개 채용 검색을 한곳에서 확인하고, 관심 공고와 지원 현황을 관리하는 개인용 웹앱입니다.
+설명서 대신 모아잡 화면이 열리도록 최상위 `index.html`을 추가하고, `/moajob/` 아래에서도 화면 파일을 찾도록 경로를 수정했습니다. **실제 공고 검색에는 별도 검색 서버가 필요합니다.** 기존 ChatGPT Site 주소에 의존하지 않습니다.
 
-배포된 모아잡의 화면과 검색 모듈을 기반으로, 호스팅 부분을 **Node.js 기본 서버**로 바꾼 GitHub 업로드용 코드입니다. 별도 패키지 의존성·API 키·데이터베이스 없이 실행할 수 있습니다. 내보낸 날짜: 2026-10-14.
+## 1. 수정본 업로드 → 모아잡 화면 열기
 
-## 빠르게 실행하기
+1. ZIP을 풀고 **폴더 안의 파일과 폴더 전체**를 [저장소 업로드 화면](https://github.com/gyeongseop97/moajob/upload/main)에 올립니다. ZIP 자체를 올리지 않습니다.
+2. 기존 파일은 같은 이름으로 덮어씁니다. 최상위에 `index.html`, `render.yaml`, `server.mjs`, `package.json`, `public` 폴더가 있어야 합니다.
+3. **Settings → Pages → Deploy from a branch → main → /(root) → Save**로 설정합니다. 이미 이렇게 되어 있다면 그대로 둡니다.
+4. 배포가 끝나면 [GitHub Pages 모아잡](https://gyeongseop97.github.io/moajob/)을 새로고침합니다. 화면은 열리며, 서버 연결 전에는 실제 검색에 필요한 연결 안내를 표시합니다.
 
-1. [Node.js](https://nodejs.org/en/download) 22.13 이상을 설치합니다.
-2. 압축을 풀고 `package.json`이 있는 폴더에서 터미널을 엽니다.
-3. 아래 명령을 실행합니다.
+GitHub Pages는 첫 화면으로 index.html, index.md, README.md를 찾습니다. 변경 반영에 최대 10분 정도 걸릴 수 있습니다. [GitHub 공식 안내](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site).
 
-```sh
+## 2. 실제 검색 서버 만들기 — 한 번만 필요
+
+수정본을 GitHub에 올린 **다음에** 아래 링크를 누릅니다.
+
+**[Render에서 모아잡 검색 서버 만들기](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fgyeongseop97%2Fmoajob)**
+
+Render에 로그인하고 서비스 구성에서 **Free** 항목을 확인한 후 배포합니다. 포함된 `render.yaml`이 Node 버전, 실행 명령, 연결 허용 주소를 설정합니다. `Live` 상태가 되면 발급된 **https://…onrender.com** 주소를 복사합니다. 이 작업은 사용자 Render 계정에서 진행하며, 이 ZIP을 받는 것만으로 서버가 배포되지는 않습니다.
+
+자동 설정 대신 Web Service로 직접 연결할 때:
+
+| 항목 | 값 |
+| --- | --- |
+| Repository | gyeongseop97/moajob |
+| Branch | main |
+| Language | Node |
+| Build Command | npm ci |
+| Start Command | npm start |
+| Instance | Free |
+| Health Check Path | /health |
+
+환경변수는 NODE_VERSION=24, HOST=0.0.0.0, ALLOWED_ORIGINS=https://gyeongseop97.github.io 입니다. PORT는 Render가 지정합니다. [공식 배포 안내](https://render.com/docs/deploy-node-express-app), [Blueprint 설정](https://render.com/docs/blueprint-spec).
+
+무료 서버는 15분 동안 요청이 없으면 잠들고 첫 연결에 약 1분이 걸릴 수 있습니다. [Render 무료 서비스 안내](https://render.com/docs/free).
+
+## 3. GitHub Pages에서 검색 서버 연결하기
+
+1. [모아잡](https://gyeongseop97.github.io/moajob/)의 **연동 사이트 → 검색 서버 연결**을 엽니다.
+2. 발급된 Render 주소를 붙여넣고 **연결 확인**을 누릅니다.
+3. 연결 성공 후 **공고 탐색**에서 검색합니다. 검색·더보기·관심 공고 원문 확인이 연결된 서버를 이용합니다.
+
+서버 주소는 이 브라우저에만 저장합니다. 다른 기기에서도 이용하려면 같은 설정을 하거나, GitHub의 `public/config.js`에서 `apiBaseUrl`에 배포 주소를 넣고 저장하면 됩니다. 비밀키는 넣지 마세요. Render 사이트 주소 자체에서도 모아잡을 바로 이용할 수 있습니다.
+
+다른 GitHub 계정으로 옮기면 render.yaml의 ALLOWED_ORIGINS를 새 https://계정.github.io 출처로 변경하세요. 경로 /moajob/는 이 값에 넣지 않습니다. 관심 공고와 메모는 서버로 전송되지 않으며 기존 JSON 백업으로 옮길 수 있습니다.
+
+## 내 컴퓨터에서 실행하기
+
+Node.js 22.13 이상, 25 미만에서 프로젝트 폴더의 터미널에 입력합니다.
+
+~~~sh
 npm install
 npm start
-```
+~~~
 
-브라우저에서 **http://localhost:3000/explore** 를 엽니다. 종료할 때는 터미널에서 `Ctrl+C`를 누릅니다.
-
-외부 패키지가 없어 `node server.mjs`로 바로 실행해도 됩니다. `explore.html`을 파일로 직접 열면 검색 서버가 연결되지 않으므로 서버 주소로 접속하세요.
-
-## GitHub에 업로드하기
-
-1. GitHub에서 새 저장소를 만듭니다. 저장소 이름 예: `moajob`.
-2. 저장소의 **Add file → Upload files**를 선택합니다.
-3. 압축을 푼 폴더 **안의 파일과 폴더 전체**를 드래그합니다. ZIP 파일 자체를 업로드하지 않습니다.
-4. 최상위에 `package.json`, `server.mjs`, `README.md`가 놓이는지 확인하고 저장합니다.
-
-업로드 절차: [GitHub 공식 파일 업로드 안내](https://docs.github.com/en/repositories/working-with-files/managing-files/adding-a-file-to-a-repository).
-
-`.github/workflows/test.yml`도 포함되어 있습니다. GitHub Actions가 활성화된 저장소에서는 업로드·코드 변경·PR 시 Node 22와 24로 자동 검사를 실행합니다. [checkout](https://github.com/actions/checkout), [setup-node](https://github.com/actions/setup-node)의 공식 사용 예를 따릅니다.
+http://localhost:3000/explore 로 접속합니다. 로컬 서버나 Render 전체 사이트에서는 별도 검색 서버 연결이 필요하지 않습니다.
 
 ## 포함된 기능
 
@@ -83,17 +109,21 @@ npm start
 node --env-file=.env server.mjs
 ```
 
-서버에 배포할 때는 Node.js 22.13 이상을 사용하고, 설치 명령은 `npm ci`, 시작 명령은 `npm start`로 설정합니다. 별도 빌드 단계는 없습니다. 호스팅에서 제공하는 `PORT`를 사용하고 외부 접속용 `HOST`는 `0.0.0.0`으로 설정합니다. 상태 확인 주소는 `/health`입니다.
+서버에 배포할 때는 Node.js 22.13 이상, 25 미만을 사용하고, 설치 명령은 `npm ci`, 시작 명령은 `npm start`로 설정합니다. 별도 빌드 단계는 없습니다. 호스팅에서 제공하는 `PORT`를 사용하고 외부 접속용 `HOST`는 `0.0.0.0`으로 설정합니다. 상태 확인 주소는 `/health`입니다.
 
-**GitHub 업로드와 사이트 호스팅은 별도입니다.** [GitHub Pages는 정적 사이트 호스팅](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)이므로, 이 프로젝트의 검색 API를 실행하려면 Node.js 서버를 지원하는 환경이 필요합니다.
+GitHub Pages에서는 화면만 실행합니다. 실제 검색은 연결한 Node.js 서버에서 처리합니다. Render의 전체 사이트 주소로 접속하면 별도 연결 설정 없이 사용할 수 있습니다.
 
 ## 코드 구조
 
 ```text
+index.html                   GitHub Pages 첫 화면
+render.yaml                  Render 무료 검색 서버 배포 설정
 server.mjs                   HTTP 서버와 API 경로
 public/
   explore.html               화면 구조
   style.css                  화면 스타일과 모바일 배치
+  config.js                  기본 검색 서버 주소 (선택)
+  backend.js                 서버 연결 확인과 주소 저장
   app.js                     검색·저장·복원·메모·새 공고 비교
   core.js                    데이터 검증과 기본 기능
   domain.js                  필터·중복·마감 판정
@@ -110,3 +140,7 @@ scripts/check-live.mjs       실제 연결 확인
 API는 `GET /api/search?q=기획&sources=saramin,jobkorea,incruit`와 `POST /api/jobs/refresh`를 제공합니다. 페이지를 지정할 때는 `pages`에 `{"saramin":2,"jobkorea":2,"incruit":2}`를 JSON으로 넣습니다. 원문 확인 요청 본문은 `{"ids":["live-jobkorea-12345"],"fresh":true}` 형태이며 한 번에 최대 5건을 확인합니다.
 
 이 코드 묶음에는 기존 호스팅의 프로젝트 ID, 인증정보, Git 이력, 임시 수집 결과, 개인 백업 파일이 포함되지 않습니다.
+
+## 이 수정본의 검증 범위
+
+GitHub Pages와 같은 /moajob/ 경로에서 첫 화면과 파일 로딩, 서버 연결, 실제 검색, 더보기, 원문 확인 요청, 새로고침 복원과 모바일 화면을 확인했습니다. API 검사에는 허용된 출처의 검색·JSON 원문 확인과 허용하지 않은 출처의 차단이 포함됩니다. Render의 실제 계정 배포와 GitHub 저장소 수정은 이 파일 제공에 포함되지 않으며 위 절차로 사용자가 진행해야 합니다.

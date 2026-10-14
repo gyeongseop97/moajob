@@ -22,7 +22,7 @@ after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.c
 
 test('root, HTML, assets, HEAD and health work without the original hosting runtime',async()=>{
   const root=await fetch(origin+'/',{redirect:'manual'});assert.equal(root.status,302);assert.equal(root.headers.get('location'),'/explore');
-  for(const name of ['/explore','/explore.html','/app.js','/core.js','/domain.js','/style.css']){
+  for(const name of ['/explore','/explore.html','/app.js','/core.js','/domain.js','/style.css','/config.js','/backend.js']){
     const response=await fetch(origin+name);assert.equal(response.status,200);assert.ok((await response.text()).length>100);assert.equal(response.headers.get('x-content-type-options'),'nosniff');
   }
   const head=await fetch(origin+'/explore',{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
@@ -64,4 +64,42 @@ test('method and refresh body validation reject unsupported requests',async()=>{
   assert.equal((await fetch(origin+'/api/jobs/refresh')).status,405);
   for(const body of ['{',JSON.stringify({ids:['https://localhost/']}),JSON.stringify({ids:[]})])assert.equal((await fetch(origin+'/api/jobs/refresh',{method:'POST',body})).status,400);
   assert.equal((await fetch(origin+'/api/jobs/refresh',{method:'POST',body:'x'.repeat(5000)})).status,413);
+});
+
+test('GitHub Pages can verify the server and read search responses',async()=>{
+  const headers={Origin:'https://gyeongseop97.github.io'};
+  const health=await fetch(origin+'/health',{headers});
+  assert.equal(health.headers.get('access-control-allow-origin'),headers.Origin);
+  assert.equal((await health.json()).service,'moajob');
+  const response=await fetch(origin+'/api/search?q=pages-test&sources=jobkorea',{headers});
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('access-control-allow-origin'),headers.Origin);
+  assert.equal(response.headers.get('vary'),'Origin');
+  assert.equal((await response.json()).jobs.length,1);
+});
+
+test('cross-origin detail refresh supports the JSON preflight and POST',async()=>{
+  const source='https://gyeongseop97.github.io';
+  const preflight=await fetch(origin+'/api/jobs/refresh',{method:'OPTIONS',headers:{Origin:source,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type'}});
+  assert.equal(preflight.status,204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'),source);
+  assert.equal(preflight.headers.get('access-control-allow-methods'),'POST');
+  const response=await fetch(origin+'/api/jobs/refresh',{method:'POST',headers:{Origin:source,'Content-Type':'application/json'},body:JSON.stringify({ids:['live-jobkorea-901'],fresh:true})});
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('access-control-allow-origin'),source);
+  assert.equal((await response.json()).results[0].status,'ok');
+});
+
+test('unapproved origins and preflight requests never call a provider',async()=>{
+  const count=calls.length;
+  const blocked=await fetch(origin+'/api/search?q=blocked',{headers:{Origin:'https://unapproved.example'}});
+  assert.equal(blocked.status,403);assert.equal(blocked.headers.get('access-control-allow-origin'),null);
+  for(const headers of [
+    {Origin:'https://unapproved.example','Access-Control-Request-Method':'POST'},
+    {Origin:'https://gyeongseop97.github.io','Access-Control-Request-Method':'DELETE'},
+    {Origin:'https://gyeongseop97.github.io','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization'},
+  ])assert.equal((await fetch(origin+'/api/jobs/refresh',{method:'OPTIONS',headers})).status,403);
+  assert.equal(calls.length,count);
+  const badQuery=await fetch(origin+'/api/search?q=',{headers:{Origin:'https://gyeongseop97.github.io'}});
+  assert.equal(badQuery.status,400);assert.equal(badQuery.headers.get('access-control-allow-origin'),'https://gyeongseop97.github.io');
 });

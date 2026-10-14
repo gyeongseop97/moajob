@@ -10,6 +10,8 @@ const sourceNames=new Set(['saramin','jobkorea','wanted','remember','incruit']);
 const assets=new Map([
   ['/explore',{file:'explore.html',type:'text/html; charset=utf-8'}],
   ['/explore.html',{file:'explore.html',type:'text/html; charset=utf-8'}],
+  ['/config.js',{file:'config.js',type:'text/javascript; charset=utf-8'}],
+  ['/backend.js',{file:'backend.js',type:'text/javascript; charset=utf-8'}],
   ['/app.js',{file:'app.js',type:'text/javascript; charset=utf-8'}],
   ['/core.js',{file:'core.js',type:'text/javascript; charset=utf-8'}],
   ['/domain.js',{file:'domain.js',type:'text/javascript; charset=utf-8'}],
@@ -44,11 +46,26 @@ function readBody(request,maximum=4000){
   });
 }
 
-export function createAppServer({fetcher=globalThis.fetch}={}){
+export function createAppServer({fetcher=globalThis.fetch,allowedOrigins=(process.env.ALLOWED_ORIGINS||'https://gyeongseop97.github.io').split(',').map(value=>value.trim()).filter(Boolean)}={}){
+  const permittedOrigins=new Set(allowedOrigins);
   const server=http.createServer(async(request,response)=>{
     try{
       const url=new URL(request.url||'/','http://localhost');
+      if(url.pathname.startsWith('/api/')||url.pathname==='/health'){
+        const requestOrigin=request.headers.origin;
+        response.setHeader('Vary','Origin');
+        let sameOrigin=false;try{sameOrigin=new URL(requestOrigin).host===request.headers.host;}catch{}
+        if(requestOrigin&&!sameOrigin&&!permittedOrigins.has(requestOrigin)){json(response,403,{error:'이 주소에서 검색 서버에 연결할 수 없습니다.'});return;}
+        if(requestOrigin)response.setHeader('Access-Control-Allow-Origin',requestOrigin);
+        if(request.method==='OPTIONS'){
+          const methods=url.pathname==='/api/jobs/refresh'?['POST']:url.pathname==='/health'?['GET','HEAD']:['GET'];
+          const requestedHeaders=(request.headers['access-control-request-headers']||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
+          if(!requestOrigin||!methods.includes(request.headers['access-control-request-method'])||requestedHeaders.some(value=>value!=='content-type')){json(response,403,{error:'지원하지 않는 연결 요청입니다.'});return;}
+          response.writeHead(204,{'Access-Control-Allow-Methods':methods.join(', '),'Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600','Cache-Control':'no-store'});response.end();return;
+        }
+      }
       if(url.pathname==='/api/search'){
+
         if(request.method!=='GET'){json(response,405,{error:'GET 요청을 사용해 주세요.'},{Allow:'GET'});return;}
         const query=url.searchParams.get('q')||'';
         const sources=(url.searchParams.get('sources')||'saramin,jobkorea,incruit').split(',').filter(Boolean);
@@ -82,7 +99,7 @@ export function createAppServer({fetcher=globalThis.fetch}={}){
       }
       if(url.pathname==='/health'){
         if(request.method==='HEAD'){response.writeHead(200,{'Cache-Control':'no-store'});response.end();}
-        else json(response,200,{status:'ok'});
+        else json(response,200,{status:'ok',service:'moajob',version:'1.1.0'});
         return;
       }
       const asset=assets.get(url.pathname);
