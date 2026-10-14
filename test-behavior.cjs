@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),{readFileSync}=require('node:fs'),{runInNewContext}=require('node:vm');
+const scope={URL,Date,Map,Set};for(const name of ['domain','core'])runInNewContext(readFileSync('./public/'+name+'.js','utf8'),scope);const C=scope.JobCore;
+const job={id:'live-jobkorea-1',kind:'live',source:'jobkorea',company:'㈜기회연구소',title:'서비스 기획 담당자',location:'경기 광주시',region:'경기',employment:'계약직 (정규직 전환 가능)',education:'초대졸↑',min:2,max:5,salary:'급여 협의',published:null,deadline:null,tags:[],category:'기획'};
+for(const filters of [{region:'광주'},{education:'대졸'},{employment:'정규직'}])assert.equal(C.classifyJob(job,filters).status,'exclude');
+assert.equal(C.classifyJob({...job,education:'대졸(2,3년) 이상'},{education:'대졸'}).status,'exclude');
+assert.equal(C.classifyJob({...job,education:'대졸(2,3년) 이상'},{education:'초대졸'}).status,'match');
+assert.equal(C.classifyJob({...job,location:'충청북도 청주시',region:'기타'},{region:'충북'}).status,'match');
+assert.equal(C.classifyJob({...job,location:'서울 강남구, 경기도 성남시'},{region:'경기'}).status,'match');
+assert.equal(C.classifyJob({...job,employment:'고용형태 미기재'},{employment:'정규직'}).status,'unknown');
+assert.equal(C.classifyJob({...job,employment:'고용형태 미기재'},{region:'광주',employment:'정규직'}).status,'exclude');
+assert.equal(C.classifyJob(job,{salaryMin:'4000'}).status,'unknown');
+assert.equal(C.classifyJob({...job,salary:'월급 400만원'},{salaryMin:'4000'}).status,'unknown');
+assert.equal(C.classifyJob({...job,salary:'연봉 4,000~5,000만원'},{salaryMin:'4500'}).status,'exclude');
+const other={...job,id:'live-saramin-2',source:'saramin',company:'(주) 기회연구소',location:'경기>광주시'};
+assert.equal(C.groupJobs([job,other]).length,1);assert.equal(C.groupJobs([job,other])[0].sources.length,2);assert.equal(C.groupJobs([job,other],false).length,2);assert.equal(C.groupJobs([job,{...job,id:'live-jobkorea-3'}]).length,2);assert.equal(C.groupJobs([job,{...other,location:'서울 강남구'}]).length,2);
+const today=C.today(),past=new Date(Date.parse(today)-86400000).toISOString().slice(0,10);assert.equal(C.deadlineText({...job,deadline:past,deadlineLabel:'D-3'}),'마감');assert.equal(C.classifyJob({...job,deadline:past},{hideClosed:true}).status,'exclude');assert.equal(C.deadlineState({...job,deadlineLabel:'마감'}).closed,true);
+console.log('Passed: exact region/education/employment, unknown information, annual pay units, safe cross-source grouping and current-date deadlines.');
+
+const wide={...job,kind:'live',id:'live-incruit-903',source:'incruit',url:'https://jlab.incruit.com/jobs/903',min:1,max:100};
+assert.equal(C.validateLiveJob(wide).max,100);
+assert.throws(()=>C.validateJob({...wide,kind:'personal'}));
+console.log('Passed: source career ranges up to 100 are retained without relaxing manual-entry validation.');

@@ -1,0 +1,14 @@
+{
+  "name": "moajob",
+  "version": "1.0.0",
+  "description": "모아잡 — 개인용 채용 공고 통합 검색과 지원 관리",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node test-core.cjs && node test-behavior.cjs && node --test tests/api.test.mjs tests/parsers.test.mjs",
+    "test:live": "node scripts/check-live.mjs"
+  }
+}
